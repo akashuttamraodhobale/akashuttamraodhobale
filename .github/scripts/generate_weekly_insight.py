@@ -29,8 +29,8 @@ def main():
     )
 
     # 3. Call the Google Gemini API using Native urllib (zero dependency, lightning fast)
-    # UPDATED MODEL: Switched from deprecated gemini-1.5-flash to the 2026 standard model: gemini-2.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # LATEST 2026 MODEL: Switched to Google's newly released GA model: gemini-3.8-flash (Released Sept 2, 2026)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{
@@ -38,10 +38,10 @@ def main():
         }]
     }
 
-    print("[*] Contacting Google Gemini API for this week's technical showcase (using gemini-2.5-flash)...")
+    print("[*] Contacting Google Gemini API for this week's technical showcase (using gemini-3.8-flash)...")
     req = urllib.request.Request(
         url, 
-        data=json.dumps(payload).encode("utf-8"), \
+        data=json.dumps(payload).encode("utf-8"), 
         headers=headers, 
         method="POST"
     )
