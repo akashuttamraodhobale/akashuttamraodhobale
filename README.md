@@ -41,10 +41,10 @@ What it is: A relational database engine and compliance reporting terminal simul
 Core Tech: Python, SQL, SQLite3, CSV reporting engines.
 Key Feature: Models patch states and license expirations across multiple regional zones, generating automated audit logs that align with NIST CSF and RBI guidelines.
 ---
-📬 Connect With Me
-💼 LinkedIn: linkedin.com/in/akash-dhobale-cybersecurity
-📧 Email: akashuttamraodhobale@gmail.com
-📰 IFSEC Article: The Most Expensive Mistake in Cybersecurity Isn't a Data Breach
+### 📬 Connect With Me
+* 💼 **LinkedIn:** [linkedin.com/in/akash-dhobale-cybersecurity](https://linkedin.com/in/akash-dhobale-cybersecurity)
+* 📧 **Email:** akashuttamraodhobale@gmail.com
+* 📰 **IFSEC Article:** [The Most Expensive Mistake in Cybersecurity Isn't a Data Breach](https://ifsecindia.com/the-most-expensive-mistake-in-cybersecurity-isnt-a-data-breach)
 ---
 ## 🤖 Live Security Engineering Feed
 
