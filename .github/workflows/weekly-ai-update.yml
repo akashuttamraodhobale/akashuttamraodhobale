@@ -1,0 +1,37 @@
+name: Weekly AI Portfolio Updater
+
+on:
+  schedule:
+    # Runs automatically every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # Allows you to trigger it manually anytime from GitHub
+
+jobs:
+  update-portfolio:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Essential permission to let the bot commit code back to your repo
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run AI Generator Engine
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python .github/scripts/generate_weekly_insight.py
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          # Commit changes only if the README file was updated
+          git diff-index --quiet HEAD || git commit -m "chore: automated weekly cybersecurity portfolio showcase [skip ci]"
+          git push origin main
