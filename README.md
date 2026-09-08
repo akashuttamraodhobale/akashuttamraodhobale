@@ -1,23 +1,23 @@
 Hi there, I'm Akash Dhobale 👋
-Enterprise Cybersecurity Leader & Technical Program Manager (TPM)
+Enterprise Cybersecurity Leader & Technical Program Manager (TPM).
 I specialize in the intersection of macro-scale technology transformations, cybersecurity architecture, and strategic IT governance. Over the past 12+ years, I have engineered and driven high-stakes infrastructure programs in the banking sector—bridging the gap between technical execution and executive-level business objectives.
 ---
 🚀 Key Highlights & Impact
 🛡️ Macro-Scale Protection: Spearheaded a ₹9 Crore ($1.1M+) enterprise security transformation, securing 80,000+ heterogeneous endpoints across 9,000+ branch locations with a phased rollout executed in a record 15 days with zero business disruption.
 ⚙️ High Availability & Resilience: Engineered and deployed Active-Active HA/DR infrastructure bridging Primary Data Centers and Disaster Recovery sites, achieving an RTO of <15 minutes and near-zero RPO.
-💼 Procurement & Financial Acumen: Governed full technology procurement lifecycles (RFP, SOW, SLA) and negotiated complex software contracts, delivering ~60% licensing cost optimization while maintaining robust technical criteria.
+💼 Procurement & Financial Acumen: Governed full technology procurement lifecycles and negotiated complex software contracts, delivering ~60% licensing cost optimization while maintaining robust technical criteria.
 📚 Industry Thought Leadership: Author of peer-reviewed research in IJSCI and industry articles for IFSEC India on building true enterprise cyber resilience beyond "the illusion of security."
 ---
 🛠️ Technology Portfolio & Skill Matrix
 ```text
 ┌──────────────────────────────────────────┬──────────────────────────────────────────┐
-│ PROGRAM & STAKEHOLDER MANAGEMENT         │ CYBERSECURITY & SYSTEM ARCHITECTURE     │
+│ PROGRAM & STAKEHOLDER MANAGEMENT         │ CYBERSECURITY & SYSTEM ARCHITECTURE      │
 ├──────────────────────────────────────────┼──────────────────────────────────────────┤
 │ • End-to-End Program Lifecycles          │ • Enterprise Endpoint Protection (EDR)   │
 │ • Agile, Scrum, & Kanban (Jira)          │ • Identity & Access Management (PAM)     │
 │ • SLA, KPI, & Vendor Contract Mgmt       │ • SIEM Log Parsing & Threat Triage       │
-│ • Stakeholder Alignment (Advisory Cmte) │ • Active-Active HA/DR Resilience Designs  │
-│ • High-Priority Technical Escalations    │ • SQL Database Auditing & Integrity     │
+│ • Stakeholder Alignment                  │ • Active-Active HA/DR Resilience Designs │
+│ • High-Priority Technical Escalations    │ • SQL Database Auditing & Integrity      │
 └──────────────────────────────────────────┴──────────────────────────────────────────┘
 ```
 Security & Infrastructure Stack: Microsoft Defender for Endpoint, Symantec Endpoint Security, CyberArk PAM, Forcepoint DLP, SCCM.
