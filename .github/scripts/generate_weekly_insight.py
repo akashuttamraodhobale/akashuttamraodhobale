@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import urllib.request
+import urllib.error
+import time
 from datetime import datetime
 
 def main():
@@ -28,30 +30,71 @@ def main():
         "Make it unique, highly advanced, and directly designed to impress senior recruiters at top-tier companies like Google or Amazon."
     )
 
-    # 3. Call the Google Gemini API using Native urllib (zero dependency, lightning fast)
-    # LATEST 2026 MODEL: Switched to Google's newly released GA model: gemini-3.8-flash (Released Sept 2, 2026)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
-    }
+    # 3. Model Cascade List (High-Availability Fallback Strategy)
+    # If the brand-new gemini-3.8-flash is experiencing high load or 503 errors, 
+    # the script will automatically roll back to other stable endpoints.
+    models_to_try = [
+        "gemini-3.8-flash",      # Flagship 2026 Model (First Choice)
+        "gemini-3.5-flash-lite", # Efficient Gemini 3 Series Fallback
+        "gemini-2.5-flash",      # Reliable Gemini 2.5 Series Fallback
+        "gemini-flash-latest"    # Google's Dynamic Redirection Alias
+    ]
 
-    print("[*] Contacting Google Gemini API for this week's technical showcase (using gemini-3.8-flash)...")
-    req = urllib.request.Request(
-        url, 
-        data=json.dumps(payload).encode("utf-8"), 
-        headers=headers, 
-        method="POST"
-    )
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            generated_text = res_data['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        print(f"[ERROR] Failed to query Gemini API: {e}")
+    generated_text = None
+
+    for model in models_to_try:
+        print(f"[*] Attempting to contact Google Gemini API using model: {model}...")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }]
+        }
+
+        # Retry logic: Retry up to 3 times with exponential backoff for transient errors (e.g., 503)
+        retries = 3
+        backoff_delay = 2
+
+        for attempt in range(1, retries + 1):
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode("utf-8"), 
+                headers=headers, 
+                method="POST"
+            )
+
+            try:
+                with urllib.request.urlopen(req) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    generated_text = res_data['candidates'][0]['content']['parts'][0]['text']
+                    break # Success! Break out of retry loop
+            except urllib.error.HTTPError as e:
+                # If it's a transient server error (500, 502, 503, 504), wait and retry
+                if e.code in [500, 502, 503, 504]:
+                    print(f"    [!] HTTP Error {e.code} (Service Unavailable/Server Error) on attempt {attempt}/{retries}.")
+                    if attempt < retries:
+                        print(f"    [*] Waiting {backoff_delay} seconds before retrying...")
+                        time.sleep(backoff_delay)
+                        backoff_delay *= 2 # Double the wait time
+                    else:
+                        print(f"    [!] All retries exhausted for model '{model}'.")
+                else:
+                    # If it's a 404 or 400, retrying won't help. Move directly to next model.
+                    print(f"    [!] HTTP Error {e.code} on model '{model}'. Skipping to fallback models.")
+                    break
+            except Exception as e:
+                print(f"    [!] Unexpected error: {e}")
+                break
+
+        if generated_text:
+            print(f"[SUCCESS] Successfully retrieved content using model: {model}!")
+            break
+        else:
+            print(f"[-] Model '{model}' failed or was unavailable. Moving to next fallback...")
+
+    if not generated_text:
+        print("[CRITICAL ERROR] All models and retries failed. Google Gemini API is completely unreachable at this moment.")
         sys.exit(1)
 
     # 4. Read and Update README.md with Sliding Window Injection
