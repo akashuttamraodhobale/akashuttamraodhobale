@@ -11,7 +11,7 @@
 ### 🛡️ Executive Profile & Leadership Overview
 I am an **Enterprise Cybersecurity Leader and Technical Program Manager (TPM)** specializing in macro-scale technology transformations, high-availability cloud/network architecture, and strategic IT governance. 
 
-Over the past **12+ years at Canara Bank**, I have directed complex, multi-million dollar infrastructure programs—bridging technical DevSecOps execution with executive board governance.
+Over the past **12+ years**, I have directed complex, multi-million dollar infrastructure programs—bridging technical DevSecOps execution with executive board governance.
 
 * **🛡️ Macro-Scale Protection:** Spearheaded a **₹9 Crore ($1.1M+)** enterprise security deployment, securing **80,000+ heterogeneous endpoints** across **9,000+ branch locations** with a phased rollout executed in a **record 15 days** with zero business disruption.
 * **⚙️ Active-Active HA/DR Resilience:** Engineered and deployed Active-Active High Availability and Disaster Recovery infrastructure across Primary Data Centers (Mumbai) and DR sites (Bengaluru), achieving an **RTO of <15 minutes** and **near-zero RPO**.
