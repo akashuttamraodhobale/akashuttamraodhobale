@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Role-Technical%20Program%20Manager%20%7C%20Cybersecurity%20Leader-blue?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Role" />
   <img src="https://img.shields.io/badge/Domain-Banking%20%26%20Enterprise%20Infrastructure-0052CC?style=for-the-badge&logo=enterprise&logoColor=white" alt="Domain" />
-  <img src="https://img.shields.io/badge/Certifications-CISSP%20%7C%20CISA%20%7C%20CEH%20%7C%20Google%20PM-success?style=for-the-badge&logo=shield&logoColor=white" alt="Certifications" />
+  <img src="https://img.shields.io/badge/Certifications-Google Cybersecurity Professional%20%7C%20CISA%20%7C%20CEH%20%7C%20Google%20PM-success?style=for-the-badge&logo=shield&logoColor=white" alt="Certifications" />
 </p>
 
 ---
