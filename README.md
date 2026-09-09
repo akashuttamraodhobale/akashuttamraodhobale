@@ -9,7 +9,7 @@
 ---
 
 ### 🛡️ Executive Profile & Leadership Overview
-I am an **Enterprise Cybersecurity Leader and Technical Program Manager (TPM)** specializing in macro-scale technology transformations, high-availability cloud/network architecture, and strategic IT governance. 
+I am an **Enterprise Cybersecurity Professional and Technical Program Manager (TPM)** specializing in macro-scale technology transformations, high-availability cloud/network architecture, and strategic IT governance. 
 
 Over the past **12+ years**, I have directed complex, multi-million dollar infrastructure programs—bridging technical DevSecOps execution with executive board governance.
 
