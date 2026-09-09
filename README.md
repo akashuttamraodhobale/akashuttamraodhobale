@@ -41,7 +41,7 @@ Over the past **12+ years**, I have directed complex, multi-million dollar infra
 
 #### 1. ⚡ [Active-Active HA/DR Architecture Simulator](https://github.com/akashuttamraodhobale/active-active-hadr-architecture)
 > **Keywords:** `BGP Anycast` • `GSLB` • `High Availability` • `RTO/RPO SLA Audit`
-* **What it is:** A Google/Microsoft-grade interactive terminal simulation of an Active-Active Dual Data Center topology (Mumbai & Bengaluru).
+* **What it is:** A Google/Microsoft-grade interactive terminal simulation of an Active-Active Dual Data Center topology.
 * **Key Feature:** Injects simulated subsea fiber cuts, measures automated failover in real-time (**RTO: ~1.6s vs <15min SLA**), and verifies zero transaction data loss (**RPO = 0s**).
 
 #### 2. 🛡️ [Enterprise Threat & Risk Financial Simulator](https://github.com/akashuttamraodhobale/enterprise-threat-risk-simulator)
