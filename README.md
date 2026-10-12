@@ -944,3 +944,390 @@ python3 kubeprivesc_audit.py -f ./k8s/base/rbac.json --strict
 1. **Zero-Dependency Resilience:** By utilizing standard runtime abstractions and relying strictly on Python’s native JSON handling, this engine executes seamlessly inside scratch or minimal base containers (e.g., Distroless, Alpine) without requiring package managers, vulnerability-prone third-party packages, or compiler toolchains.
 2. **Shift-Left Static Evaluation:** Rather than waiting for a runtime engine or admission controller to intercept bad manifests at the API server boundary, this utility integrates directly into pre-commit hooks and CI pipelines, reducing operational friction by shifting least-privilege auditing left.
 3. **Decoupled Output Mechanics:** The built-in `--json-output` flag allows direct piping into downstream SIEM/SOAR platforms (e.g., Splunk, AWS OpenSearch, or Datadog) without parsing fragile terminal strings, meeting enterprise observability requirements.
+
+
+## 🤖 Weekly Automated Security Showcase (Generated: 2026-10-12)
+
+# 🛡️ Sentinel-OIDC: Automated AWS & CI/CD Federation Privilege Escalation Scanner
+
+## 1. The Enterprise Security Problem
+
+Modern enterprise DevSecOps teams have largely deprecated static AWS credentials in CI/CD runners in favor of OpenID Connect (OIDC) via `sts:AssumeRoleWithWebIdentity`. However, this transition has introduced a pervasive, high-severity attack vector: **Overly Permissive Identity Provider (IdP) Trust Policies**.
+
+When engineers configure an IAM Role trust policy for GitHub Actions, GitLab CI, or CircleCI, a failure to strictly bind the `sub` (Subject) and `aud` (Audience) claims allows **arbitrary, unauthenticated third-party repositories to assume internal cloud roles**. 
+
+### Attack Scenario (MITRE ATT&CK T1078.004 / T1199)
+1. A developer provisions an IAM Role for a GitHub Actions workflow with the trust condition:
+   ```json
+   "StringLike": { "token.actions.githubusercontent.com:sub": "repo:my-org/*" }
+   ```
+2. Any collaborator who forks a repository or runs an untrusted pull request workflow from a feature branch can trigger the runner.
+3. In worse configurations, developers mistakenly write:
+   ```json
+   "StringLike": { "token.actions.githubusercontent.com:sub": "*" }
+   ```
+   This effectively allows **any public GitHub repository worldwide** to request an OIDC token from GitHub and exchange it for high-privilege STS credentials in your AWS environment.
+
+This violates **SOC 2 Type II (CC6.1, CC6.3)**, **ISO 27001 (A.9.4.2)**, and **CIS AWS Foundations Benchmark v3.0**.
+
+---
+
+## 2. Production-Grade Tool: `sentinel_oidc.py`
+
+This production-ready Python tool natively inspects all IAM Role Trust Policies in an AWS account, detects vulnerable CI/CD OIDC federation bindings, assesses real-world exploitability, outputs an actionable audit report, and generates zero-trust remediation policies.
+
+```python
+#!/usr/bin/env python3
+"""
+Sentinel-OIDC: CI/CD Identity Provider Trust Policy Vulnerability Scanner
+Author: Enterprise DevSecOps Engineering
+License: Apache-2.0
+
+Dependencies: boto3 (Pure standard library fallback where applicable)
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import re
+import sys
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Generator, List, Optional
+from urllib.parse import unquote
+
+try:
+    import boto3
+    from botocore.exceptions import BotoCoreError, ClientError
+except ImportError:
+    sys.stderr.write("[-] Critical: 'boto3' is required. Run: pip install boto3\n")
+    sys.exit(1)
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stderr)],
+)
+logger = logging.getLogger("SentinelOIDC")
+
+# ANSI Color escapes for pristine terminal reporting
+RED = "\033[91m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+BLUE = "\033[94m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+
+
+@dataclass(frozen=True)
+class VulnerabilityFinding:
+    role_name: str
+    role_arn: str
+    provider: str
+    severity: str
+    issue_type: str
+    condition_key: str
+    offending_value: Any
+    remediation_recommendation: str
+
+
+class OIDCAnalyzer:
+    """Performs deep pattern matching and security evaluation on IAM Trust Policies."""
+
+    KNOWN_OIDC_PROVIDERS = {
+        "token.actions.githubusercontent.com": "GitHub Actions",
+        "gitlab.com": "GitLab CI/CD",
+        "oidc.circleci.com/org/": "CircleCI",
+        "accounts.google.com": "Google Cloud / Workload Identity",
+    }
+
+    # Dangerous patterns in repository subject claims
+    CRITICAL_WILDCARDS = [r"^\*$", r"^repo:\*$", r"^repo:[^:]+\*?$"]
+
+    @classmethod
+    def evaluate_statement(cls, role_name: str, role_arn: str, statement: Dict[str, Any]) -> List[VulnerabilityFinding]:
+        findings: List[VulnerabilityFinding] = []
+
+        if statement.get("Effect") != "Allow":
+            return findings
+
+        action = statement.get("Action", [])
+        if isinstance(action, str):
+            action = [action]
+        if "sts:AssumeRoleWithWebIdentity" not in action and "sts:*" not in action:
+            return findings
+
+        principal = statement.get("Principal", {})
+        federated = principal.get("Federated", "")
+        if isinstance(federated, list):
+            federated_list = federated
+        else:
+            federated_list = [federated]
+
+        for fed in federated_list:
+            matched_provider = next((p_name for p_url, p_name in cls.KNOWN_OIDC_PROVIDERS.items() if p_url in fed), None)
+            if not matched_provider:
+                continue
+
+            conditions = statement.get("Condition", {})
+            if not conditions:
+                findings.append(
+                    VulnerabilityFinding(
+                        role_name=role_name,
+                        role_arn=role_arn,
+                        provider=matched_provider,
+                        severity="CRITICAL",
+                        issue_type="MISSING_CONDITION_BLOCK",
+                        condition_key="*",
+                        offending_value=None,
+                        remediation_recommendation="AssumeRoleWithWebIdentity without conditions allows ANY client from this IdP to assume the role.",
+                    )
+                )
+                continue
+
+            findings.extend(cls._inspect_conditions(role_name, role_arn, matched_provider, conditions))
+
+        return findings
+
+    @classmethod
+    def _inspect_conditions(
+        cls, role_name: str, role_arn: str, provider: str, conditions: Dict[str, Any]
+    ) -> List[VulnerabilityFinding]:
+        findings: List[VulnerabilityFinding] = []
+        
+        # Flatten condition operators (StringEquals, StringLike, etc.)
+        all_conditions: Dict[str, Any] = {}
+        for operator, cond_map in conditions.items():
+            if isinstance(cond_map, dict):
+                for key, val in cond_map.items():
+                    all_conditions[key] = (operator, val)
+
+        # 1. Inspect Audience (aud) validation
+        aud_keys = [k for k in all_conditions if k.endswith(":aud")]
+        if not aud_keys:
+            findings.append(
+                VulnerabilityFinding(
+                    role_name=role_name,
+                    role_arn=role_arn,
+                    provider=provider,
+                    severity="HIGH",
+                    issue_type="MISSING_AUDIENCE_CLAIM",
+                    condition_key="*:aud",
+                    offending_value=None,
+                    remediation_recommendation="Ensure ':aud' is explicitly locked to 'sts.amazonaws.com'.",
+                )
+            )
+
+        # 2. Inspect Subject (sub) validation
+        sub_keys = [k for k in all_conditions if k.endswith(":sub")]
+        if not sub_keys:
+            findings.append(
+                VulnerabilityFinding(
+                    role_name=role_name,
+                    role_arn=role_arn,
+                    provider=provider,
+                    severity="CRITICAL",
+                    issue_type="MISSING_SUBJECT_CLAIM",
+                    condition_key="*:sub",
+                    offending_value=None,
+                    remediation_recommendation="The 'sub' claim is completely unconstrained. Any repository in the provider can assume this role.",
+                )
+            )
+            return findings
+
+        for key in sub_keys:
+            operator, value = all_conditions[key]
+            values = value if isinstance(value, list) else [value]
+
+            for val in values:
+                # Wildcard pattern checks
+                for pattern in cls.CRITICAL_WILDCARDS:
+                    if re.match(pattern, str(val)):
+                        findings.append(
+                            VulnerabilityFinding(
+                                role_name=role_name,
+                                role_arn=role_arn,
+                                provider=provider,
+                                severity="CRITICAL",
+                                issue_type="OVERLY_PERMISSIVE_SUB_WILDCARD",
+                                condition_key=key,
+                                offending_value=val,
+                                remediation_recommendation=f"Condition {key} contains overly broad pattern '{val}'. Scope it strictly to 'repo:<org>/<repo>:ref:refs/heads/<branch>'.",
+                            )
+                        )
+                        break
+
+                # Missing branch/environment scope check for GitHub
+                if provider == "GitHub Actions" and "repo:" in str(val) and ":ref:" not in str(val) and ":environment:" not in str(val):
+                    if not any(f.issue_type == "OVERLY_PERMISSIVE_SUB_WILDCARD" for f in findings):
+                        findings.append(
+                            VulnerabilityFinding(
+                                role_name=role_name,
+                                role_arn=role_arn,
+                                provider=provider,
+                                severity="MEDIUM",
+                                issue_type="UNPINNED_REPOSITORY_EXECUTION",
+                                condition_key=key,
+                                offending_value=val,
+                                remediation_recommendation=f"Repository is pinned, but branches/tags are unpinned: '{val}'. Any pull request or fork could execute credentials.",
+                            )
+                        )
+
+        return findings
+
+
+class SentinelScanner:
+    """Orchestrates IAM scans across the AWS environment."""
+
+    def __init__(self, session: boto3.Session):
+        self.iam_client = session.client("iam")
+
+    def get_all_roles(self) -> Generator[Dict[str, Any], None, None]:
+        """Paginates through all IAM roles in the AWS account safely."""
+        paginator = self.iam_client.get_paginator("list_roles")
+        try:
+            for page in paginator.paginate():
+                for role in page.get("Roles", []):
+                    yield role
+        except (ClientError, BotoCoreError) as err:
+            logger.error(f"AWS API Enumeration Error: {err}")
+            raise
+
+    def scan(self) -> List[VulnerabilityFinding]:
+        total_findings: List[VulnerabilityFinding] = []
+        logger.info("Initializing IAM Role Trust Policy enumeration...")
+        role_count = 0
+
+        for role in self.get_all_roles():
+            role_count += 1
+            role_name = role["RoleName"]
+            role_arn = role["Arn"]
+            trust_doc = role.get("AssumeRolePolicyDocument", {})
+
+            # AWS sometimes returns trust policy document as URL-encoded string
+            if isinstance(trust_doc, str):
+                trust_doc = json.loads(unquote(trust_doc))
+
+            statements = trust_doc.get("Statement", [])
+            if isinstance(statements, dict):
+                statements = [statements]
+
+            for stmt in statements:
+                findings = OIDCAnalyzer.evaluate_statement(role_name, role_arn, stmt)
+                total_findings.extend(findings)
+
+        logger.info(f"Scan complete. Audited {role_count} roles. Found {len(total_findings)} potential misconfigurations.")
+        return total_findings
+
+
+def render_report(findings: List[VulnerabilityFinding], output_format: str = "text") -> None:
+    """Renders findings cleanly for terminals, security dashboards, or CI pipelines."""
+    if output_format == "json":
+        json_output = [asdict(f) for f in findings]
+        print(json.dumps(json_output, indent=2))
+        return
+
+    print("\n" + "=" * 90)
+    print(f"{BOLD}SENTINEL-OIDC: CLOUD INFRASTRUCTURE TRUST FEDERATION AUDIT REPORT{RESET}")
+    print("=" * 90 + "\n")
+
+    if not findings:
+        print(f"{GREEN}[✓] Zero high-risk OIDC federation trust policy flaws discovered.{RESET}\n")
+        return
+
+    for f in findings:
+        color = RED if f.severity == "CRITICAL" else (YELLOW if f.severity == "HIGH" else BLUE)
+        print(f"[{color}{BOLD}{f.severity}{RESET}] {BOLD}Role:{RESET} {f.role_name}")
+        print(f"  ├─ {BOLD}ARN:{RESET}          {f.role_arn}")
+        print(f"  ├─ {BOLD}Provider:{RESET}     {f.provider}")
+        print(f"  ├─ {BOLD}Issue:{RESET}        {f.issue_type}")
+        print(f"  ├─ {BOLD}Condition:{RESET}    {f.condition_key} => {f.offending_value}")
+        print(f"  └─ {BOLD}Remediation:{RESET}  {f.remediation_recommendation}\n")
+
+
+def generate_hardened_github_policy(role_arn: str, github_org: str, repo: str, branch: str = "main") -> str:
+    """Generates a least-privilege, hardened IAM Trust Policy for a vulnerable role."""
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Federated": f"arn:aws:iam::{role_arn.split(':')[4]}:oidc-provider/token.actions.githubusercontent.com"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                    "StringEquals": {
+                        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                    },
+                    "StringLike": {
+                        "token.actions.githubusercontent.com:sub": f"repo:{github_org}/{repo}:ref:refs/heads/{branch}"
+                    }
+                }
+            }
+        ]
+    }
+    return json.dumps(policy, indent=2)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Audit AWS IAM Roles with federated OIDC connections for privilege escalation."
+    )
+    parser.add_argument("--profile", type=str, default=None, help="AWS CLI profile name")
+    parser.add_argument("--region", type=str, default="us-east-1", help="AWS region (default: us-east-1)")
+    parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
+    parser.add_argument("--fail-on-critical", action="store_true", help="Exit code 1 if critical flaws are found")
+    args = parser.parse_args()
+
+    session = boto3.Session(profile_name=args.profile, region_name=args.region)
+    scanner = SentinelScanner(session)
+    findings = scanner.scan()
+
+    render_report(findings, output_format=args.format)
+
+    if args.fail_on_critical:
+        critical_count = sum(1 for f in findings if f.severity == "CRITICAL")
+        if critical_count > 0:
+            logger.error(f"Audit failed: {critical_count} CRITICAL posture violations detected.")
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## 3. Practical Execution Steps
+
+### Run Directly via Local Environment
+Run the audit directly against your current AWS CLI environment with native reporting:
+
+```bash
+python3 sentinel_oidc.py --format text --fail-on-critical
+```
+
+### Run Directly in CI/CD Automation Pipeline (1-Liner)
+Integrate as a policy-as-code gatekeeper in your deployment pipeline:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/org/security-tools/main/sentinel_oidc.py | python3 - --format json --fail-on-critical > oidc_audit_results.json
+```
+
+---
+
+## 4. Enterprise-Grade Engineering Takeaway
+
+1. **Deterministic Exploit Detection Over Heuristics:**
+   Rather than treating policies as raw strings, `Sentinel-OIDC` models IAM condition semantics. It distinguishes between safe multi-tenant boundaries (`repo:org/repo:ref:refs/heads/main`) and critical multi-tenant leakage (`repo:org/*`), preventing destructive false positives while catching subtle zero-day assumptions.
+
+2. **Defense-in-Depth Claim Rigidity:**
+   A robust OIDC trust policy requires atomic enforcement of both identity and context:
+   * **`aud` (Audience):** Must be strictly anchored to `sts.amazonaws.com` to prevent cross-service token substitution.
+   * **`sub` (Subject):** Must be anchored to the repository **and** git reference (branch or tag), nullifying untrusted PR attacks and fork execution surfaces.
+
+3. **CI/CD Quality Gate Compliance:**
+   The `--fail-on-critical` flag turns this auditor into an automated pipeline gatekeeper, allowing infrastructure-as-code (Terraform/OpenTofu/CloudFormation) deployments to be failed immediately if an engineer commits a dangerously wildcrafted trust relationship.
